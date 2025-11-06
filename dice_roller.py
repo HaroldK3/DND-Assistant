@@ -1,6 +1,9 @@
 import re
 import random
 
+## Dice roller logic using Regex (Unfortunately) to parse the /roll 4d6+6 to be consistent with
+## DND style dice input. --KH
+
 def roll(input):
 
     input = input.lower().replace(' ', '')

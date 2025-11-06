@@ -20,6 +20,9 @@ async def on_ready():
 async def hello(ctx):
     await ctx.send(f'Hello, {ctx.author.name}!')
 
+## Start actual bot logic here
+
+## Rolling the dice -KH 
 @bot.command(name='roll')
 async def roll_die(ctx, dice: str):
     result = dice_roller.roll(dice)
