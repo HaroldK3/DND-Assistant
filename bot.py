@@ -2,7 +2,11 @@ import discord
 from discord.ext import commands
 import os
 import dice_roller
+from monster_manual import find_monster
+from typing import Optional
+import dotenv
 
+dotenv.load_dotenv()
 token = os.environ.get('discord_bot_token')
 
 
@@ -28,6 +32,12 @@ async def roll_die(ctx, dice: str):
     result = dice_roller.roll(dice)
     await ctx.send(result)
 
+## Search the monster manual -SM
+@bot.command(name='monster')
+# monstername is set to optional so that if the monstername is not provided, it can provide a random monster from the DB. --SM
+async def search_monster(ctx, monstername: Optional[str]):
+    result = find_monster(monstername)
+    await ctx.send(result)
 
 ## running the bot
 if __name__ == '__main__':
