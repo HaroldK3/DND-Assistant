@@ -18,7 +18,17 @@ def find_monster(monstername):
     else:
         results = session.query(Monster).where(Monster.name == monstername).first()
         if results is None:
-            return f"Could not find a monster with the name {monstername}."
-    return  results
+            return f"Could not find a monster with the name '{monstername}'."
+    return results
 
 # TODO: Add more monster manual search functions, specifically for types, legendary, etc without having to use a different command.
+
+def find_monster(monstertype):
+    results = ""
+    if not monstertype:
+        results = session.query(Monster).where(Monster.index == random.randint(0, 761)).first()
+    else:
+        results = session.query(Monster).where(Monster.Type == monstertype).head(5)
+        if results is None:
+            return f"Could not find any monsters with type '{monstertype}'"
+    return results
