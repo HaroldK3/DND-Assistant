@@ -3,8 +3,8 @@ from discord import app_commands
 from discord.ext import commands
 import os
 import dice_roller
-from monster_manual import find_monster
-from typing import Optional
+from monster_manual import find_monster, mm_literals
+from typing import Optional, Literal
 import dotenv
 from loot_generator import build_item_message, build_loot_message
 import json
@@ -50,11 +50,23 @@ async def roll_die(ctx, dice: str):
     await ctx.send(result)
 
 ## Search the monster manual -SM
-@bot.command(name='monster')
+@bot.tree.command(name='monster')
+@app_commands.describe(
+    monstername="Search by monster name.",
+    monstertype="Search by monster type.",
+    monstersize="Search by monsters size.",
+    minac="Please enter an integer for minimum armor class.",
+    minhp="Please enter an integer for minimum health.",
+    monsterspeed="Please select a speed type.",
+    alignment="Please select an alignment.",
+    legendary="Is the monster Legendary?"
+)
 # monstername is set to optional so that if the monstername is not provided, it can provide a random monster from the DB. --SM
-async def search_monster(ctx, monstername: Optional[str]):
+async def search_monster(ctx, monstername: Optional[str], monstertype: Optional[str], monstersize: Optional[mm_literals.sizes], minac: Optional[int], minhp: Optional[int], monsterspeed: Optional[mm_literals.speeds], alignment: Optional[mm_literals.alignments], legendary: Optional[Literal["Yes", "No"]]):
+    # if help:
+    #     result = mm_help(align)
     result = find_monster(monstername)
-    await ctx.send(result)
+    await ctx.response.send_message(str(result))
 
 ## Get item defined by user
 @bot.command(name="item")
