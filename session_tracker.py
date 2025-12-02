@@ -2,19 +2,19 @@ import sqlite3
 import os
 from datetime import datetime
 
-# make sure data folder is there so we know we can make the database
+# make sure data folder is there so we know we can make the database -NM
 if not os.path.exists("data"):
     os.makedirs("data")
 
-# path to the db
+# path to the db -NM
 DB_PATH = "data/sessions.db"
 
-# making sure the db exists
+# making sure the db exists -NM
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
 
-# creating sessions table that will store things for the summary
+# creating sessions table that will store things for the summary -NM
     c.execute("""
         CREATE TABLE IF NOT EXISTS sessions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -44,7 +44,7 @@ class SessionTracker:
 
     # starting sessions
     # must use a session number location and level to start  (as of now)
-    # returns a message that confirms it is started
+    # returns a message that confirms it is started -NM
     def start_session(self, session_number, location, level):
         # sesion state dictionary
         self.active_sessions[session_number] = {
@@ -60,7 +60,7 @@ class SessionTracker:
         }
         return f"Session {session_number} started at {location}, Level {level}"
 
-    # end session with session number
+    # end session with session number -NM
     def end_session(self, session_number):
         session = self.active_sessions.get(session_number)
         # if no session is found with that number return no session found
@@ -92,7 +92,7 @@ class SessionTracker:
         conn.commit()
         conn.close()
 
-        # recap that will display
+        # recap that will display -NM
         recap = (
             f"Session {session['session_number']} Recap:\n"
             f"Location: {session['location']}\n"
@@ -107,21 +107,22 @@ class SessionTracker:
         del self.active_sessions[session_number]
         return recap
 
+    # log an action taken during session -NM
     def log_action(self, session_number, action):
         session = self.active_sessions.get(session_number)
         if session:
             session["actions_log"].append(action)
-    # add players to a session
+    # add players to a session -
     def add_player(self, session_number, player_name):
         session = self.active_sessions.get(session_number)
         if session and player_name not in session["players"]:
             session["players"].append(player_name)
-    # add XP to the session
+    # add XP to the session -NM
     def add_xp(self, session_number, xp):
         session = self.active_sessions.get(session_number)
         if session:
             session["xp_given"] += xp
-    # use a consumable 
+    # use a consumable -NM
     def use_consumable(self, session_number, item_name):
         session = self.active_sessions.get(session_number)
         if session:
