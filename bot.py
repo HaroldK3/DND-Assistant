@@ -16,10 +16,13 @@ from character_sheet import (
     delete_character,
     import_character_from_pdf
 )
+from session_tracker import SessionTracker   
 
 dotenv.load_dotenv()
-token = os.getenv('discord_bot_token')
+token = os.getenv('')
 
+## Create tracker instance  
+tracker = SessionTracker()
 
 ## Testing with simple commands
 intents = discord.Intents.default()
@@ -31,6 +34,20 @@ bot = commands.Bot(command_prefix='/', intents = intents)
 async def on_ready():
     await bot.tree.sync()
     print(f'{bot.user} is connected!')
+
+@bot.event                  
+async def on_message(message):
+    if message.author != bot.user:
+        tracker.log_action(1, f"{message.author.name} said: {message.content}")
+    await bot.process_commands(message)
+
+@bot.listen()               
+async def on_command(ctx):
+    tracker.log_action(1, f"Command started: /{ctx.command} by {ctx.author.name}")
+
+@bot.listen()              
+async def on_command_completion(ctx):
+    tracker.log_action(1, f"Command completed: /{ctx.command} by {ctx.author.name}")
 
 @bot.command(name='hello')
 async def hello(ctx):
@@ -61,10 +78,7 @@ async def roll_die(ctx, dice: str):
     alignment="Please select an alignment.",
     legendary="Is the monster Legendary?"
 )
-# monstername is set to optional so that if the monstername is not provided, it can provide a random monster from the DB. --SM
 async def search_monster(ctx, monstername: Optional[str], monstertype: Optional[str], monstersize: Optional[mm_literals.sizes], minac: Optional[int], minhp: Optional[int], monsterspeed: Optional[mm_literals.speeds], alignment: Optional[mm_literals.alignments], legendary: Optional[Literal["Yes", "No"]]):
-    # if help:
-    #     result = mm_help(align)
     result = find_monster(monstername)
     await ctx.response.send_message(str(result))
 
@@ -80,7 +94,6 @@ async def loot_command(ctx, chest_type: str = "chest"):
     """Generate a pile of loot."""
     result = build_loot_message(chest_type=chest_type)
     await ctx.send(result)
-
 
 ## Character Sheet stuff -KH
 def format_character(row):
@@ -131,8 +144,32 @@ async def importsheet(interaction: discord.Interaction, pdf: discord.Attachment)
     os.remove(file_path)
     await interaction.followup.send(msg)
 
+# session commands -NM
+@bot.command(name='session_start')
+async def session_start(ctx, session_number: int, location: str, level: int):
+    tracker.add_player(session_number, ctx.author.name)
+    msg = tracker.start_session(session_number, location, level)
+    await ctx.send(msg)
 
+@bot.command(name='session_end')
+async def session_end(ctx, session_number: int):
+    recap = tracker.end_session(session_number)
+    await ctx.send(recap)
 
+@bot.command(name='xp')
+async def give_xp(ctx, session_number: int, xp: int):
+    tracker.add_xp(session_number, xp)
+    await ctx.send(f"Added {xp} XP to session {session_number}")
+
+@bot.command(name='add_player')
+async def add_player(ctx, session_number: int, player_name: str):
+    tracker.add_player(session_number, player_name)
+    await ctx.send(f"{player_name} added to session {session_number}")
+
+@bot.command(name='use_item')
+async def use_item(ctx, session_number: int, *, item_name: str):
+    tracker.use_consumable(session_number, item_name)
+    await ctx.send(f"{ctx.author.name} used {item_name} in session {session_number}")
 
 ## running the bot
 if __name__ == '__main__':
