@@ -14,12 +14,14 @@ from character_sheet import (
     insert_character,
     update_character,
     delete_character,
-    import_character_from_pdf
+    import_character_from_pdf,
+    set_character_owner,
+    get_character_by_discord
 )
 from session_tracker import SessionTracker   
 
 dotenv.load_dotenv()
-token = os.getenv('')
+token = os.environ.get('discord_bot_token')
 
 ## Create tracker instance  
 tracker = SessionTracker()
@@ -128,7 +130,7 @@ def format_character(row):
     return embed
 
 @bot.tree.command(name="importsheet", description="Import a PDF character sheet")
-@app_commands.describe(pdf="Upload the completed PDF")
+@app_commands.describe(pdf="Upload the completed character sheet PDF")
 async def importsheet(interaction: discord.Interaction, pdf: discord.Attachment):
     await interaction.response.defer()
 
@@ -137,12 +139,53 @@ async def importsheet(interaction: discord.Interaction, pdf: discord.Attachment)
 
     try:
         char_name = import_character_from_pdf(file_path)
-        msg = f"Character **{char_name}** imported!"
+        set_character_owner(char_name, str(interaction.user.id))
+        msg = f"Character **{char_name}** imported and assigned to you!"
     except Exception as e:
         msg = f"Error importing sheet: {e}"
 
     os.remove(file_path)
     await interaction.followup.send(msg)
+
+## Print character - KH
+@bot.tree.command(name="character", description="Show your character!")
+async def character(interaction: discord.Interaction):
+    await interaction.response.defer()
+
+    row = get_character_by_discord(str(interaction.user.id))
+    if not row:
+        await interaction.followup.send(
+            "You haven't been assigned a character yet! Use /importsheet to import your character sheet first!"
+        )
+        return
+    
+    data = json.loads(row['data'])
+
+    embed = discord.Embed(
+        title=row['name'],
+        description=row["class_level"] or "",
+        color=0x3498db,
+    )
+
+    fields = [
+        ("Race", "Race "),
+        ("Background", "Background"),
+        ("STR", "STR"),
+        ("DEX", "DEX"),
+        ("CON", "CON"),
+        ("INT", "INT"),
+        ("WIS", "WIS"),
+        ("CHA", "CHA"),
+        ("HP Max", "HPMax"),
+        ("HP Current", "HPCurrent"),
+        ("AC", "AC"),
+        ("Speed", "Speed"),
+    ]
+
+    for label, key in fields:
+        embed.add_field(name=label, value=data.get(key, "—"), inline=True)
+
+    await interaction.followup.send(embed=embed)
 
 # session commands -NM
 @bot.command(name='session_start')
