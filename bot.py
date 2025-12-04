@@ -63,7 +63,7 @@ async def hello(ctx):
 ## Start actual bot logic here
 
 ## Rolling the dice -KH 
-@bot.command(name='roll')
+@bot.tree.command(name='roll')
 async def roll_die(ctx, dice: str):
     result = dice_roller.roll(dice)
     await ctx.send(result)
