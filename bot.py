@@ -64,9 +64,16 @@ async def hello(ctx):
 
 ## Rolling the dice -KH 
 @bot.tree.command(name='roll')
-async def roll_die(ctx, dice: str):
+async def roll_die(interaction: discord.Interaction, dice: str):
+    character = get_character(interaction.user.id)
+
+    if character:
+        char_name = character["name"]
+    else:
+        char_name = interaction.user.display_name
+
     result = dice_roller.roll(dice)
-    await ctx.send(result)
+    await interaction.response.send_message(f"**{char_name}** rolls: {result}")
 
 ## Search the monster manual -SM
 @bot.tree.command(name='monster')
