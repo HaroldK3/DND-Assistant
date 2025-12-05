@@ -65,6 +65,7 @@ def find_monster(name=None, category=None, size=None, minac=None, minhp=None, sp
             results.append(session.query(Monster).where(Monster.index == random.randint(0, 761)).first())
             i+=1
     else:
+        # TODO: Pull Random values matching the more vague search terms.--SM
         results = session.query(Monster).filter_by(**search_vals).limit(amnt).all()
     # elif name:
     #     name.replace(" ", "-")
