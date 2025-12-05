@@ -6,7 +6,7 @@ import dice_roller
 from monster_manual import find_monster, mm_literals
 from typing import Optional, Literal
 import dotenv
-from loot_generator import build_item_message, build_loot_message
+from loot_generator import build_item_message, build_loot_message, parse_item_args
 import json
 from character_sheet import (
     init_db,
@@ -20,7 +20,7 @@ from character_sheet import (
 )
 from session_tracker import SessionTracker   
 
-dotenv.load_dotenv()
+dotenv.load_dotenv('token.env')
 token = os.environ.get('discord_bot_token')
 
 ## Create tracker instance  
@@ -93,8 +93,14 @@ async def search_monster(ctx, monstername: Optional[str], monstertype: Optional[
 
 ## Get item defined by user
 @bot.command(name="item")
-async def item_command(ctx, rarity: str = "random", item_type: str = "any", magic_only: str = "no"):
-    result = build_item_message(rarity=rarity, item_type=item_type, magic_only=magic_only)
+async def item_command(ctx, *, args: str = ""):
+    rarity, item_type, magic_only = parse_item_args(args)
+
+    result = build_item_message(
+        rarity=rarity,
+        item_type=item_type,
+        magic_only=magic_only,
+    )
     await ctx.send(result)
 
 ## Loot a chest for a random amount of random loot
