@@ -8,7 +8,7 @@ class Monster(Base):
 
     index = Column(Integer, primary_key = True)
     name = Column(String)
-    Type = Column(String)
+    category = Column(String)
     size = Column(String)
     AC = Column(Integer)
     HP = Column(Integer)
@@ -25,4 +25,4 @@ class Monster(Base):
     charisma = Column("cha", Integer)
     # TODO: Fix the formatting to look more presentable, currently displays as one long message. --SM
     def __repr__(self):
-        return f"Name: {self.name}\nType: {self.Type}\nSize: {self.size}\nAC: {self.AC}\nHP: {self.HP}\nSpeed: {self.speed}\nAlignment: {self.alignment}\nLegendary: {self.legendary}\nSource: {self.source}\nSTR: {self.strength}\nDEX: {self.dexterity}\nCON: {self.constitution}\nINT: {self.intelligence}\nWIS: {self.wisdom}\nCHA: {self.charisma}"
+        return f"Name: {self.name}\nCategory: {self.category}\nSize: {self.size}\nAC: {self.AC}\nHP: {self.HP}\nSpeed: {self.speed}\nAlignment: {self.alignment}\nLegendary: {self.legendary}\nSource: {self.source}\nSTR: {self.strength}\nDEX: {self.dexterity}\nCON: {self.constitution}\nINT: {self.intelligence}\nWIS: {self.wisdom}\nCHA: {self.charisma}"

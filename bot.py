@@ -1,5 +1,5 @@
 import discord
-from discord import app_commands
+from discord import app_commands, Color
 from discord.ext import commands
 import os
 import dice_roller
@@ -52,21 +52,34 @@ async def roll_die(ctx, dice: str):
 ## Search the monster manual -SM
 @bot.tree.command(name='monster')
 @app_commands.describe(
-    monstername="Search by monster name.",
-    monstertype="Search by monster type.",
-    monstersize="Search by monsters size.",
+    name="Search by monster name.",
+    category="Search by monster type.",
+    size="Search by monsters size.",
     minac="Please enter an integer for minimum armor class.",
     minhp="Please enter an integer for minimum health.",
-    monsterspeed="Please select a speed type.",
-    alignment="Please select an alignment.",
-    legendary="Is the monster Legendary?"
+    speed="Please select a speed type.",
+    align="Please select an alignment.",
+    legendary="Is the monster Legendary?",
+    amount="How many monsters meeting criteria to return?"
 )
-# monstername is set to optional so that if the monstername is not provided, it can provide a random monster from the DB. --SM
-async def search_monster(ctx, monstername: Optional[str], monstertype: Optional[str], monstersize: Optional[mm_literals.sizes], minac: Optional[int], minhp: Optional[int], monsterspeed: Optional[mm_literals.speeds], alignment: Optional[mm_literals.alignments], legendary: Optional[Literal["Yes", "No"]]):
-    # if help:
-    #     result = mm_help(align)
-    result = find_monster(monstername)
-    await ctx.response.send_message(str(result))
+# All parameters are optional, so a user may use one, two, three, or all elements for their search if they'd like, allowing for more broad searches as well as more narrow searches. Also has amount variable to allow for getting a certain amount of monsters.--SM
+async def search_monster(ctx, name: Optional[str], category: Optional[str], size: Optional[mm_literals.sizes], minac: Optional[int], minhp: Optional[int], speed: Optional[mm_literals.speeds], align: Optional[mm_literals.alignments], legendary: Optional[Literal["Yes", "No"]], amount: Optional[int]):
+    # Issue with the display of multiple monsters taking too long, this extends the window to allow for the command to have the time it needs to operate. --SM
+    await ctx.response.defer()
+    results = find_monster(name, category, size, minac, minhp, speed, align, legendary, amount)
+    for result in results:
+        # Originally was having issues with character limit. This doubles the normal discord character limit from 2000 to 4096. --SM
+        # TODO: Improve display aesthetic --SM
+        # TODO: Exception handling for if message still exceeds increased character limit. --SM
+        # TODO: Monster cards currently send as individual messages instead --SM
+        embed = discord.Embed(
+            title="Monster Manual",
+            description=result,
+            color=discord.Color.blue()
+        )
+        await ctx.followup.send(embed=embed)
+    if not results:
+        await ctx.response.send_message("Could not find any monsters using provided terms. Please try again.")
 
 ## Get item defined by user
 @bot.command(name="item")
