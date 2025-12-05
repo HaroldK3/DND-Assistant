@@ -21,6 +21,7 @@ def init_db():
     CREATE TABLE IF NOT EXISTS characters (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT UNIQUE NOT NULL,
+        discord_id TEXT,
         class_level TEXT,
         race TEXT,
         background TEXT,
@@ -28,6 +29,17 @@ def init_db():
     )
     """)
 
+    conn.commit()
+    conn.close()
+
+def set_character_owner(name: str, discord_id: str):
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("""
+                UPDATE characters
+                SET discord_id = ?
+                WHERE name = ?
+                """, (discord_id, name))
     conn.commit()
     conn.close()
 
@@ -137,5 +149,16 @@ def import_character_from_pdf(pdf_path: str):
 def remove_character(name: str):
     delete_character(name)
     print(f"Deleted character: {name}")
+
+
+
+def get_character_by_discord(discord_id: str):
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM characters WHERE discord_id = ?", (discord_id,))
+    row = cur.fetchone()
+    conn.close()
+    return row
+
 
 
