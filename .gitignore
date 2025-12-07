@@ -1,0 +1,6 @@
+__pycache__/
+*.env
+*.pyc
+venv/
+data/.idea/dataSources.xml
+data/.idea/vcs.xml
