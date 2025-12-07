@@ -6,7 +6,7 @@ import dice_roller
 from monster_manual import find_monster, mm_literals
 from typing import Optional, Literal
 import dotenv
-from loot_generator import build_item_message, build_loot_message, parse_item_args
+from loot_generator import build_loot_message, parse_item_args, build_inventory_message, generate_item_for_user, clear_inventory_for_user
 import json
 from character_sheet import (
     init_db,
@@ -107,24 +107,54 @@ async def search_monster(ctx, name: Optional[str], category: Optional[str], size
     if not results:
         await ctx.response.send_message("Could not find any monsters using provided terms. Please try again.")
 
-## Get item defined by user
-@bot.command(name="item")
-async def item_command(ctx, *, args: str = ""):
-    rarity, item_type, magic_only = parse_item_args(args)
+# item – generates an item and stores it in the user's inventory
+@bot.tree.command(name="item", description="Get a random item and add it to your inventory.")
+@app_commands.describe(
+    fields="e.g. 'common weapon', 'common light armor', 'rare ring magic'"
+)
+async def item(interaction: discord.Interaction, fields: str = ""):
+    
+    rarity, item_type, magic_only = parse_item_args(fields)
 
-    result = build_item_message(
+    # generate & save item for this user
+    msg = generate_item_for_user(
+        discord_id=str(interaction.user.id),
         rarity=rarity,
         item_type=item_type,
         magic_only=magic_only,
     )
-    await ctx.send(result)
 
-## Loot a chest for a random amount of random loot
-@bot.command(name="loot")
-async def loot_command(ctx, chest_type: str = "chest"):
-    """Generate a pile of loot."""
+    await interaction.response.send_message(
+        f"**{interaction.user.display_name}** finds:\n{msg}"
+    )
+
+# inventory – shows the user's items - AM
+@bot.tree.command(name="inventory", description="Show your item inventory.")
+async def inventory(interaction: discord.Interaction):
+    msg = build_inventory_message(str(interaction.user.id))
+    await interaction.response.send_message(msg)
+
+# loot – just generates a pile of loot (doesn't put into inventory atm) - AM
+@bot.tree.command(name="loot", description="Generate a pile of random loot.")
+@app_commands.describe(
+    chest_type="pouch (small), chest (medium), or hoard (big)"
+)
+async def loot(interaction: discord.Interaction, chest_type: str = "chest"):
     result = build_loot_message(chest_type=chest_type)
-    await ctx.send(result)
+    await interaction.response.send_message(result)
+
+# clear_inventory - clear the users inventory - AM
+@bot.tree.command(name="clear_inventory", description="Delete all items from your inventory.")
+async def clear_inventory(interaction: discord.Interaction):
+    
+    deleted = clear_inventory_for_user(str(interaction.user.id))
+
+    if deleted == 0:
+        msg = "You don't have any items in your inventory."
+    else:
+        msg = f"Removed {deleted} item(s) from your inventory."
+
+    await interaction.response.send_message(msg, ephemeral=True)
 
 ## Character Sheet stuff -KH
 def format_character(row):
