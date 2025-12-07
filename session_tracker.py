@@ -34,10 +34,9 @@ Base.metadata.create_all(bind=engine)
 
 class SessionTracker:
     def __init__(self):
-        self.active_sessions = {}  # key: guild_id -> session_data
+        self.active_sessions = {}  
 
     def get_active_session(self, guild_id):
-        """Get the active session for a guild, if any."""
         return self.active_sessions.get(str(guild_id))
 
     def start_session(self, guild_id, session_number, location, level):
