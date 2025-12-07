@@ -107,6 +107,18 @@ async def search_monster(ctx, name: Optional[str], category: Optional[str], size
     if not results:
         await ctx.response.send_message("Could not find any monsters using provided terms. Please try again.")
 
+# Auto logging for session tracker -NM
+    tracker.record_monster(ctx.guild.id, ctx.user.name, results)
+
+    for result in results:
+        embed = discord.Embed(
+            title="Monster Manual",
+            description=result,
+            color=discord.Color.blue()
+        )
+        await ctx.followup.send(embed=embed)
+    if not results:
+        await ctx.response.send_message("Could not find any monsters using provided terms. Please try again.")
 # item – generates an item and stores it in the user's inventory
 @bot.tree.command(name="item", description="Get a random item and add it to your inventory.")
 @app_commands.describe(
@@ -143,6 +155,10 @@ async def loot(interaction: discord.Interaction, chest_type: str = "chest"):
     result = build_loot_message(chest_type=chest_type)
     await interaction.response.send_message(result)
 
+    # Auto logging for session tracker -NM
+    tracker.record_loot(interaction.guild.id, interaction.user.name, result)
+
+    await interaction.response.send_message(result)
 # clear_inventory - clear the users inventory - AM
 @bot.tree.command(name="clear_inventory", description="Delete all items from your inventory.")
 async def clear_inventory(interaction: discord.Interaction):
@@ -247,31 +263,68 @@ async def character(interaction: discord.Interaction):
     await interaction.followup.send(embed=embed)
 
 # session commands -NM
+
 @bot.command(name='session_start')
 async def session_start(ctx, session_number: int, location: str, level: int):
-    tracker.add_player(session_number, ctx.author.name)
-    msg = tracker.start_session(session_number, location, level)
-    await ctx.send(msg)
+    embed, error = tracker.start_session(ctx.guild.id, session_number, location, level)
+    
+    if error:
+        await ctx.send(f"{error}")
+        return
+    
+    tracker.add_player(ctx.guild.id, ctx.author.name)
+    await ctx.send(embed=embed)
 
 @bot.command(name='session_end')
-async def session_end(ctx, session_number: int):
-    recap = tracker.end_session(session_number)
-    await ctx.send(recap)
+async def session_end(ctx, session_number: int = None):
+    embed, error = tracker.end_session(ctx.guild.id)
+    
+    if error:
+        await ctx.send(f"{error}")
+        return
+    
+    await ctx.send(embed=embed)
+
+@bot.command(name='session_status')
+async def session_status(ctx):
+    session = tracker.get_active_session(ctx.guild.id)
+    
+    if not session:
+        await ctx.send("No active session. Start one with `/session_start`")
+        return
+    
+    embed = discord.Embed(
+        title=f"Active Session #{session['session_number']}",
+        description=f"**Location:** {session['location']}\n**Level:** {session['level']}",
+        color=discord.Color.green()
+    )
+    
+    players = ", ".join(session['players']) if session['players'] else "None yet"
+    embed.add_field(name="Players", value=players, inline=False)
+    embed.add_field(name="Events Logged", value=str(len(session['actions_log'])), inline=True)
+    
+    await ctx.send(embed=embed)
 
 @bot.command(name='xp')
-async def give_xp(ctx, session_number: int, xp: int):
-    tracker.add_xp(session_number, xp)
-    await ctx.send(f"Added {xp} XP to session {session_number}")
+async def give_xp(ctx, xp: int, session_number: int = None):
+    if tracker.add_xp(ctx.guild.id, xp):
+        await ctx.send(f"Added **{xp} XP** to the session!")
+    else:
+        await ctx.send("No active session found.")
 
 @bot.command(name='add_player')
-async def add_player(ctx, session_number: int, player_name: str):
-    tracker.add_player(session_number, player_name)
-    await ctx.send(f"{player_name} added to session {session_number}")
+async def add_player(ctx, player_name: str, session_number: int = None):
+    if tracker.add_player(ctx.guild.id, player_name):
+        await ctx.send(f"**{player_name}** added to the session!")
+    else:
+        await ctx.send("No active session found or player already added.")
 
 @bot.command(name='use_item')
-async def use_item(ctx, session_number: int, *, item_name: str):
-    tracker.use_consumable(session_number, item_name)
-    await ctx.send(f"{ctx.author.name} used {item_name} in session {session_number}")
+async def use_item(ctx, *, item_name: str):
+    if tracker.use_consumable(ctx.guild.id, item_name, ctx.author.name):
+        await ctx.send(f"**{ctx.author.name}** used **{item_name}**")
+    else:
+        await ctx.send("No active session found.")
 
 ## running the bot
 if __name__ == '__main__':

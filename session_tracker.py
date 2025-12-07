@@ -1,129 +1,196 @@
-import sqlite3
 import os
 from datetime import datetime
+from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime
+from sqlalchemy.orm import declarative_base, sessionmaker
+import discord
 
-# make sure data folder is there so we know we can make the database -NM
+# make sure that the data folder exists
 if not os.path.exists("data"):
     os.makedirs("data")
+# path to the db
+DATABASE_URL = "sqlite:///data/sessions.db"
+# engine session and factory
+engine = create_engine(DATABASE_URL, echo=False, future=True)
+SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
-# path to the db -NM
-DB_PATH = "data/sessions.db"
+Base = declarative_base()
+# model for the database
+class SessionModel(Base):
+    __tablename__ = "sessions"
 
-# making sure the db exists -NM
-def init_db():
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    session_number = Column(Integer)
+    guild_id = Column(String)
+    location = Column(String)
+    level = Column(Integer)
+    start_time = Column(DateTime)
+    end_time = Column(DateTime)
+    players = Column(Text)
+    actions_log = Column(Text)
+    xp_given = Column(Integer)
+    consumables_used = Column(Text)
 
-# creating sessions table that will store things for the summary -NM
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS sessions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            session_number INTEGER,
-            location TEXT,
-            level INTEGER,
-            start_time TEXT,
-            end_time TEXT,
-            players TEXT,
-            actions_log TEXT,
-            xp_given INTEGER,
-            consumables_used TEXT
-        )
-    """)
+Base.metadata.create_all(bind=engine)
 
-    conn.commit()
-    conn.close()
-
-# run the database wehn we start the code
-init_db()
-
-
-# session tracker
 class SessionTracker:
     def __init__(self):
-        self.active_sessions = {}
+        self.active_sessions = {}  # key: guild_id -> session_data
 
-    # starting sessions
-    # must use a session number location and level to start  (as of now)
-    # returns a message that confirms it is started -NM
-    def start_session(self, session_number, location, level):
-        # sesion state dictionary
-        self.active_sessions[session_number] = {
+    def get_active_session(self, guild_id):
+        """Get the active session for a guild, if any."""
+        return self.active_sessions.get(str(guild_id))
+
+    def start_session(self, guild_id, session_number, location, level):
+        guild_id = str(guild_id)
+        
+        # prevent starting a second session if is already active
+        if guild_id in self.active_sessions:
+            return None, "There's already an active session. End it first with `/session_end`"
+        
+        # stores all session runtime data in memory
+        self.active_sessions[guild_id] = {
             "session_number": session_number,
+            "guild_id": guild_id,
             "location": location,
             "level": level,
-            "start_time": datetime.utcnow().isoformat(),
+            "start_time": datetime.now(),
             "end_time": None,
             "players": [],
             "actions_log": [],
-            "xp_given": 0,
             "consumables_used": []
         }
-        return f"Session {session_number} started at {location}, Level {level}"
-
-    # end session with session number -NM
-    def end_session(self, session_number):
-        session = self.active_sessions.get(session_number)
-        # if no session is found with that number return no session found
-        if not session:
-            return f"No active session {session_number}."
-
-        # record the end time for the session
-        session["end_time"] = datetime.utcnow().isoformat()
-
-        # send info from sessions to db
-        conn = sqlite3.connect(DB_PATH)
-        c = conn.cursor()
-        c.execute("""
-            INSERT INTO sessions 
-            (session_number, location, level, start_time, end_time, players, actions_log, xp_given, consumables_used)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            session["session_number"],
-            session["location"],
-            session["level"],
-            session["start_time"],
-            session["end_time"],
-            ", ".join(session["players"]),
-            "\n".join(session["actions_log"]),
-            session["xp_given"],
-            ", ".join(session["consumables_used"])
-        ))
-
-        conn.commit()
-        conn.close()
-
-        # recap that will display -NM
-        recap = (
-            f"Session {session['session_number']} Recap:\n"
-            f"Location: {session['location']}\n"
-            f"Level: {session['level']}\n"
-            f"Duration: {session['start_time']} -> {session['end_time']}\n"
-            f"Players: {', '.join(session['players'])}\n"
-            f"Actions:\n{chr(10).join(session['actions_log']) if session['actions_log'] else 'No actions recorded.'}\n"
-            f"XP Given: {session['xp_given']}\n"
-            f"Consumables Used: {', '.join(session['consumables_used']) if session['consumables_used'] else 'None'}"
+        
+        # embed for when we start a session
+        embed = discord.Embed(
+            title=f" Session {session_number} Started",
+            description=f"**Location:** {location}\n**Level:** {level}",
+            color=discord.Color.green(),
+            timestamp=datetime.now()
         )
+        
+        return embed, None
+    # ends active session for a guild
+    # saves the session data and saves to the db
+    def end_session(self, guild_id):
+        guild_id = str(guild_id)
+        session_data = self.active_sessions.get(guild_id)
+        
+        # no active session exists
+        if not session_data:
+            return None, "No active session found."
+        
+        # when the session ended
+        session_data["end_time"] = datetime.now()
 
-        del self.active_sessions[session_number]
-        return recap
+        # Save the session to the db
+        db = SessionLocal()
+        db_session = SessionModel(
+            session_number=session_data["session_number"],
+            guild_id=session_data["guild_id"],
+            location=session_data["location"],
+            level=session_data["level"],
+            start_time=session_data["start_time"],
+            end_time=session_data["end_time"],
+            players=", ".join(session_data["players"]),
+            actions_log="\n".join(session_data["actions_log"]),
+            consumables_used=", ".join(session_data["consumables_used"])
+        )
+        db.add(db_session)
+        db.commit()
+        db.close()
 
-    # log an action taken during session -NM
-    def log_action(self, session_number, action):
-        session = self.active_sessions.get(session_number)
-        if session:
-            session["actions_log"].append(action)
-    # add players to a session -
-    def add_player(self, session_number, player_name):
-        session = self.active_sessions.get(session_number)
-        if session and player_name not in session["players"]:
-            session["players"].append(player_name)
-    # add XP to the session -NM
-    def add_xp(self, session_number, xp):
-        session = self.active_sessions.get(session_number)
-        if session:
-            session["xp_given"] += xp
-    # use a consumable -NM
-    def use_consumable(self, session_number, item_name):
-        session = self.active_sessions.get(session_number)
-        if session:
-            session["consumables_used"].append(item_name)
+        # Calculate total session duration
+        duration = session_data["end_time"] - session_data["start_time"]
+        hours = int(duration.total_seconds() // 3600)
+        minutes = int((duration.total_seconds() % 3600) // 60)
+        # formats the time so it is accurate and nicely readable
+        start_time_str = session_data["start_time"].strftime("%I:%M %p")
+        end_time_str = session_data["end_time"].strftime("%I:%M %p")
+        # create recap embed
+        embed = discord.Embed(
+            title=f" Session {session_data['session_number']} Complete",
+            description=f"**Location:** {session_data['location']}\n**Level:** {session_data['level']}",
+            color=discord.Color.blue(),
+            timestamp=session_data["end_time"]
+        )
+        # footer for start and finsish time
+        embed.set_footer(text=f"Started: {start_time_str} | Ended: {end_time_str}")
+        
+        # who played in the session
+        players_text = ", ".join(session_data["players"]) if session_data["players"] else "None recorded"
+        embed.add_field(name=" Players", value=players_text, inline=False)
+        
+        # Duration 
+        embed.add_field(name=" Duration", value=f"{hours}h {minutes}m", inline=True)
+
+        # Consumables used
+        if session_data["consumables_used"]:
+            consumables_text = ", ".join(session_data["consumables_used"])
+            embed.add_field(name=" Consumables Used", value=consumables_text, inline=False)
+        
+        # show actions logged
+        if session_data["actions_log"]:
+            events_text = "\n".join(f"• {action}" for action in session_data["actions_log"])
+            # Split if too long (Discord embed field limit is 1024 chars)
+            if len(events_text) > 1024:
+                events_text = events_text[:1020] + "..."
+            embed.add_field(name=" Session Events", value=events_text, inline=False)
+        # remove from memory after saved
+        del self.active_sessions[guild_id]
+        return embed, None
+
+    def log_action(self, guild_id, action):
+        # add action to the session log with timestamps
+        guild_id = str(guild_id)
+        session_data = self.active_sessions.get(guild_id)
+        # only log when session is running
+        if session_data:
+            timestamp = datetime.now().strftime("%I:%M %p")
+            session_data["actions_log"].append(f"[{timestamp}] {action}")
+            return True
+        return False
+    # add a player to the session
+    def add_player(self, guild_id, player_name):
+        guild_id = str(guild_id)
+        session_data = self.active_sessions.get(guild_id)
+        if session_data and player_name not in session_data["players"]:
+            session_data["players"].append(player_name)
+            return True
+        return False
+    # logs consumable usage automatically
+    def use_consumable(self, guild_id, item_name, player):
+        guild_id = str(guild_id)
+        session_data = self.active_sessions.get(guild_id)
+        if session_data:
+            session_data["consumables_used"].append(f"{player}: {item_name}")
+            self.log_action(guild_id, f"{player} used **{item_name}**")
+            return True
+        return False
+    # logs loot events automatically
+    # also puts the text from the loot in the recap
+    def record_loot(self, guild_id, player, loot_text):
+        """Logs loot events automatically."""
+        guild_id = str(guild_id)
+        # Extract just the items from the loot text
+        if "**You open the loot and find:**" in loot_text:
+            items = loot_text.split("**You open the loot and find:**\n")[1]
+            self.log_action(guild_id, f"{player} found loot: **{items}**")
+            return True
+        return False
+    # logs monster encounters automatically
+    def record_monster(self, guild_id, player, monsters):
+        guild_id = str(guild_id)
+        if monsters:
+            names = ", ".join(m.name for m in monsters if hasattr(m, "name"))
+            if names:
+                self.log_action(guild_id, f"{player} encountered: **{names}**")
+                return True
+        return False
+    
+    def record_roll(self, guild_id, player, dice_notation, result):
+        guild_id = str(guild_id)
+        # Only log if it looks like an important roll (d20 for checks/attacks)
+        if "d20" in dice_notation.lower():
+            self.log_action(guild_id, f"{player} rolled {dice_notation}: **{result}**")
+            return True
+        return False
