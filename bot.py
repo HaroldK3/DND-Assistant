@@ -97,6 +97,7 @@ async def search_monster(ctx, name: Optional[str], category: Optional[str], size
     else:
         await display_monsters(ctx, results)        
 
+
 # Auto logging for session tracker -NM
     tracker.record_monster(ctx.guild.id, ctx.user.name, results)
 
