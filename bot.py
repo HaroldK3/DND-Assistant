@@ -3,7 +3,7 @@ from discord import app_commands, Color
 from discord.ext import commands
 import os
 import dice_roller
-from monster_manual import find_monster, mm_literals
+from monster_manual import find_monster, display_monsters, mm_literals
 from typing import Optional, Literal
 import dotenv
 from loot_generator import build_loot_message, parse_item_args, build_inventory_message, generate_item_for_user, clear_inventory_for_user
@@ -20,7 +20,7 @@ from character_sheet import (
 )
 from session_tracker import SessionTracker   
 
-dotenv.load_dotenv('token.env')
+dotenv.load_dotenv()
 token = os.environ.get('discord_bot_token')
 
 ## Create tracker instance  
@@ -90,35 +90,16 @@ async def roll_die(interaction: discord.Interaction, dice: str):
 )
 # All parameters are optional, so a user may use one, two, three, or all elements for their search if they'd like, allowing for more broad searches as well as more narrow searches. Also has amount variable to allow for getting a certain amount of monsters.--SM
 async def search_monster(ctx, name: Optional[str], category: Optional[str], size: Optional[mm_literals.sizes], minac: Optional[int], minhp: Optional[int], speed: Optional[mm_literals.speeds], align: Optional[mm_literals.alignments], legendary: Optional[Literal["Yes", "No"]], amount: Optional[int]):
-    # Issue with the display of multiple monsters taking too long, this extends the window to allow for the command to have the time it needs to operate. --SM
-    await ctx.response.defer()
-    results = find_monster(name, category, size, minac, minhp, speed, align, legendary, amount)
-    for result in results:
-        # Originally was having issues with character limit. This doubles the normal discord character limit from 2000 to 4096. --SM
-        # TODO: Improve display aesthetic --SM
-        # TODO: Exception handling for if message still exceeds increased character limit. --SM
-        # TODO: Monster cards currently send as individual messages instead --SM
-        embed = discord.Embed(
-            title="Monster Manual",
-            description=result,
-            color=discord.Color.blue()
-        )
-        await ctx.followup.send(embed=embed)
+    # Creates a list from the find monsters method with the search terms used, if any were input.--SM
+    results = await find_monster(name, category, size, minac, minhp, speed, align, legendary, amount)
     if not results:
         await ctx.response.send_message("Could not find any monsters using provided terms. Please try again.")
+    else:
+        await display_monsters(ctx, results)        
 
 # Auto logging for session tracker -NM
     tracker.record_monster(ctx.guild.id, ctx.user.name, results)
 
-    for result in results:
-        embed = discord.Embed(
-            title="Monster Manual",
-            description=result,
-            color=discord.Color.blue()
-        )
-        await ctx.followup.send(embed=embed)
-    if not results:
-        await ctx.response.send_message("Could not find any monsters using provided terms. Please try again.")
 # item – generates an item and stores it in the user's inventory
 @bot.tree.command(name="item", description="Get a random item and add it to your inventory.")
 @app_commands.describe(
