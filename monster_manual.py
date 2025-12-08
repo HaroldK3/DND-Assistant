@@ -7,7 +7,7 @@ import discord
 
 # TODO: General error handling.
 # TODO: Combat encounters?
-
+# TODO: Fix URL, minhp, minac.
 # Connects to the monstermanual DB, allows us to access it. --SM
 DATABASE_URL = "sqlite:///data/monsters.db"
 engine = sqla.create_engine(DATABASE_URL)
