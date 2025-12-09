@@ -9,7 +9,7 @@ class Monster(Base):
     index = Column(Integer, primary_key = True)
     name = Column(String)
     url = Column(String)
-    CR = Column(Integer)
+    CR = Column(String)
     category = Column(String)
     size = Column(String)
     AC = Column(Integer)
@@ -24,6 +24,5 @@ class Monster(Base):
     intelligence = Column("int", Integer)
     wisdom = Column("wis", Integer)
     charisma = Column("cha", Integer)
-    # TODO: Fix the formatting to look more presentable, currently displays as one long message. --SM
     def __repr__(self):
         return f"Name: {self.name}\nPage URL: {self.url}\nChallenge Rating: {self.CR} Category: {self.category}\nSize: {self.size}\nAC: {self.AC}\nHP: {self.HP}\nSpeed: {self.speed}\nAlignment: {self.alignment}\nLegendary: {self.legendary}\nSource: {self.source}\nSTR: {self.strength}\nDEX: {self.dexterity}\nCON: {self.constitution}\nINT: {self.intelligence}\nWIS: {self.wisdom}\nCHA: {self.charisma}"
