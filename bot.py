@@ -26,7 +26,7 @@ from character_sheet import (
 )
 from session_tracker import SessionTracker   
 
-dotenv.load_dotenv('token.env')
+dotenv.load_dotenv('.env')
 token = os.environ.get('discord_bot_token')
 
 ## Create tracker instance  
@@ -61,13 +61,6 @@ async def on_command_completion(ctx):
 async def hello(ctx):
     await ctx.send(f'Hello, {ctx.author.name}!')
 
-## @bot.command(name='help')
-## async def help():
-##     print("Commands: ")
-##     print("/roll - rolls dice, formatted #d#(+ or -)#, being standard notation for D&D dice rolls.")
-
-## Start actual bot logic here
-
 ## Rolling the dice -KH 
 @bot.tree.command(name='roll')
 async def roll_die(interaction: discord.Interaction, dice: str):
@@ -79,7 +72,7 @@ async def roll_die(interaction: discord.Interaction, dice: str):
         char_name = interaction.user.display_name
 
     result = dice_roller.roll(dice)
-    await interaction.response.send_message(f"**{char_name}** rolls: {result}")
+    await interaction.response.send_message(f"**{char_name}** {result}")
 
 ## Search the monster manual -SM
 @bot.tree.command(name='monster')
@@ -184,6 +177,7 @@ async def clear_inventory(interaction: discord.Interaction):
     await interaction.response.send_message(embed=embed, ephemeral=True)
 
 ## Character Sheet stuff -KH
+## Handles the character formatting -KH
 def format_character(row):
     data = json.loads(row["data"])
     embed = discord.Embed(
@@ -215,6 +209,7 @@ def format_character(row):
 
     return embed
 
+## Import sheet command using pyPDF2's pdf reader
 @bot.tree.command(name="importsheet", description="Import a PDF character sheet")
 @app_commands.describe(pdf="Upload the completed character sheet PDF")
 async def importsheet(interaction: discord.Interaction, pdf: discord.Attachment):
@@ -233,7 +228,7 @@ async def importsheet(interaction: discord.Interaction, pdf: discord.Attachment)
     os.remove(file_path)
     await interaction.followup.send(msg)
 
-## Print character - KH
+## Print character command based on the discord user ID - KH
 @bot.tree.command(name="character", description="Show your character!")
 async def character(interaction: discord.Interaction):
     await interaction.response.defer()

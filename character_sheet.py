@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 from PyPDF2 import PdfReader
 
+##Chatacter sheet pdf handling and CRUD functions. -KH
 
 DB_PATH = Path("DND_DB.db")
 
@@ -13,6 +14,7 @@ def get_connection():
     return conn
 
 
+##Crud stuff
 def init_db():
     conn = get_connection()
     cur = conn.cursor()
@@ -113,7 +115,7 @@ def parse_pdf(path: str) -> dict:
         if val is None:
             val = ""
 
-        # Convert bytes to string (some PDFs do this)
+        # Convert bytes to string
         if isinstance(val, bytes):
             try:
                 val = val.decode("utf-8")
