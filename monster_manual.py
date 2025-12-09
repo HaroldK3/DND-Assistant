@@ -5,9 +5,7 @@ import random
 from typing import Literal
 import discord
 
-# TODO: General error handling.
-# TODO: Combat encounters?
-# TODO: Fix URL, minhp, minac.
+
 # Connects to the monstermanual DB, allows us to access it. --SM
 DATABASE_URL = "sqlite:///data/monsters.db"
 engine = sqla.create_engine(DATABASE_URL)
@@ -32,7 +30,7 @@ def mm_build_embed(monster: Monster):
     embed.add_field(name="Alignment", value=monster.alignment, inline=True)
     embed.add_field(name="Legendary", value=monster.legendary, inline=True)
     embed.add_field(name="Source", value=monster.source, inline=True)
-    embed.add_field(name="Stats", value="**Stats**", inline=False)
+    embed.add_field(name="**Stats**", value="", inline=False)
     embed.add_field(name="STR", value=monster.strength, inline=True)
     embed.add_field(name="DEX", value=monster.dexterity, inline=True)
     embed.add_field(name="CON", value=monster.constitution, inline=True)
@@ -50,11 +48,13 @@ All you need to know about Buttons in Discord.py & Pycord (By code with Swastik)
 PyCord Guide - Buttons: https://guide.pycord.dev/interactions/ui-components/buttons
 """
 class menu_nav(discord.ui.View):
-    def __init__(self, monsters:list[Monster]):
+    def __init__(self, monsters:list[Monster], ctx, tracker):
         super().__init__()
         self.current_page = 0
         self.num_pages = len(monsters)
         self.monsters = monsters
+        self.ctx = ctx
+        self.tracker = tracker
 
     @discord.ui.button(label="◀️", style=discord.ButtonStyle.primary)
     async def prev(self, interaction, button):
@@ -63,6 +63,18 @@ class menu_nav(discord.ui.View):
         else:
             self.current_page -= 1
         await interaction.response.edit_message(embed=mm_build_embed(self.monsters[self.current_page]))
+
+    @discord.ui.button(label="Log for Session", style=discord.ButtonStyle.success)
+    async def track_monster(self, interaction, button):
+        active_session = self.tracker.get_active_session(self.ctx.guild.id)
+        await interaction.response.defer()
+        monster_to_track = [self.monsters[self.current_page]]
+        if active_session:
+            self.tracker.record_monster(self.ctx.guild.id, self.ctx.user.name, monster_to_track)
+            await interaction.followup.send(f"Successfully tracked {self.monsters[self.current_page].name} to session log.", ephemeral=True)
+        else:
+            await interaction.followup.send(f"Unable to track monster: No session is currently active.", ephemeral=True)
+
     @discord.ui.button(label="▶️", style=discord.ButtonStyle.primary)
     async def next(self, interaction, button):
         if self.current_page == len(self.monsters) - 1:
@@ -74,9 +86,11 @@ class menu_nav(discord.ui.View):
     
 ## Acceptable values for search input that depends on a strict set of values.--SM
 class mm_literals:
+    valid_params = ["name", "category", "size", "minac", "maxac", "minhp", "maxhp", "speed", "align", "legendary"]
+
     sizes = Literal['Tiny', 'Small', 'Medium', 'Large', 'Gargantuan']
 
-    speeds = Literal["Fly", "Swim", "None"]
+    speeds = Literal["fly", "swim", "None"]
 
     alignments = Literal["neutral good","any alignment","lawful evil","chaotic evil","neutral evil","chaotic good","lawful good","unaligned","neutral","lawful neutral"]
 
@@ -85,28 +99,28 @@ async def clean_dict(dict_vals):
     dict_vals = {k: v for k, v in dict_vals.items() if v}
     return dict_vals
 
-# Unsure if this will be implemented at the end.--SM
-async def mm_help(align=False):
-    if align is True:
-        aligns = session.query(Monster).distinct.all()
-        return "MONSTERMANUAL ALIGNMENTS:\n" \
-               f"{aligns}"
+# Resource used: https://www.w3schools.com/python/python_lists_comprehension.asp
+def filter_by_ac(minac, maxac, monsters):
+    if maxac is None:
+        filtered_monsters = [monster for monster in monsters if monster.AC >= minac]
+    elif minac is None:
+        filtered_monsters = [monster for monster in monsters if monster.AC <= maxac]
     else:
-        return "MONSTER MANUAL INSTRUCTIONS:\n" \
-           "    ``monster`` - returns five random monsters.\n" \
-           "    ``monster name:[name]`` - searches by the monsters name.\n" \
-           "    monster category:[category]`` - searches by type of monster, returns 5 random matching values.\n" \
-           "    ``monster size:[small/medium/large]`` - searches by size" \
-           "    ``monster minac:[number]`` - finds 5 monsters with the stated minimum armor class.\n" \
-           "    ``monster minhp:[number]`` - finds 5 monsters with the stated minimum health points.\n" \
-           "    ``monster speed:[any/fly/swim/none]`` - finds 5 monsters with the stated speed type, any speed type. or no listed speed type.\n" \
-           "    ``monster align:[alignment]`` - finds 5 monsters with the matching alignment type. please enter monster. please type monster help align for list of values."
+        filtered_monsters = [monster for monster in monsters if monster.AC >= minac and monster.AC <= maxac]
+    return filtered_monsters
+
+def filter_by_hp(minhp, maxhp, monsters):
+    if maxhp is None:
+        filtered_monsters = [monster for monster in monsters if monster.HP >= minhp]
+    elif minhp is None:
+        filtered_monsters = [monster for monster in monsters if monster.HP <= maxhp]
+    else:
+        filtered_monsters = [monster for monster in monsters if monster.HP >= minhp and monster.HP <= maxhp]
+    return filtered_monsters
+
 # Search for a monster by varying search terms. If name is null, presents a random monster from the database. --SM
-# TODO: Check ALL search terms. For sure, fix minhp.
-async def find_monster(name=None, category=None, size=None, minac=None, minhp=None, speed=None, align=None, legendary=None, amnt = None):
+async def find_monster(name=None, category=None, size=None, minac=None, maxac=None, minhp=None, maxhp=None, speed=None, align=None, legendary=None):
     results = []
-    if amnt is None:
-        amnt = 5
     if name:
         name = name.replace(" ","-")
     if legendary == "Yes":
@@ -117,29 +131,29 @@ async def find_monster(name=None, category=None, size=None, minac=None, minhp=No
         "name": name,
         "category" : category,
         "size" : size,
-        # These two lines may be the cause for headache with minhp not working. Not a variable in Monster, so likely falling flat when used.
-        "minac" :  minac,
-        "minhp" : minhp,
         "speed" : speed,
-        "align":  align,
+        "alignment":  align,
         "legendary" : legendary
         }
     search_vals = await clean_dict(search_vals)
-    # TODO: Fix to make list entire monster manual, instead of a random one. No need to randomize as it is easier to sift through with menu.--SM
     if not search_vals:
-        i = 0
-        while i < amnt:
-            results.append(session.query(Monster).where(Monster.current_page == random.randint(0, 761)).first())
-            i+=1
+        results = session.query(Monster).all()
     else:
         # TODO: Pull Random values matching the more vague search terms.--SM
-        results = session.query(Monster).filter_by(**search_vals).limit(amnt).all()
+        results = session.query(Monster).filter_by(**search_vals).all()
+    if minac or maxac:
+        results = filter_by_ac(minac, maxac, results)
+    if minhp or maxhp:
+        results = filter_by_hp(minhp, maxhp, results)
     return results
 
 
-# Creates the menu for the monster display with the embed, buttons. Creates the first monster from the results of the search allowing for a starting point of the menu.--SM
-async def display_monsters(ctx, monsters: list[Monster]):
-    view = menu_nav(monsters)
+# Creates the menu for the monster display with the embed, buttons. Creates the first monster from the results of the search allowing for a starting point of the menu. Tracker is passed from bot.py to allow us to use the session_tracker's record_monster function.--SM
+async def display_monsters(ctx, monsters: list[Monster], tracker, reveal):
+    view = menu_nav(monsters, ctx,tracker)
     first_monster = mm_build_embed(monsters[0])
-    await ctx.response.send_message(embed=first_monster, view=view)
+    if reveal == "Yes":
+        await ctx.response.send_message(embed=first_monster, view=view)
+    else:
+        await ctx.response.send_message(embed=first_monster, view=view, ephemeral=True)
 
