@@ -8,4 +8,3 @@ Alexandria Moncier
 Steven Mullins  
 Nathaniel Mullins  
 
-#Notes - For the bot to work you may have to run the session tracker before since it makes the db. -NM
