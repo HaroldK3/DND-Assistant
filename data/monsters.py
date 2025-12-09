@@ -26,3 +26,5 @@ class Monster(Base):
     charisma = Column("cha", Integer)
     def __repr__(self):
         return f"Name: {self.name}\nPage URL: {self.url}\nChallenge Rating: {self.CR} Category: {self.category}\nSize: {self.size}\nAC: {self.AC}\nHP: {self.HP}\nSpeed: {self.speed}\nAlignment: {self.alignment}\nLegendary: {self.legendary}\nSource: {self.source}\nSTR: {self.strength}\nDEX: {self.dexterity}\nCON: {self.constitution}\nINT: {self.intelligence}\nWIS: {self.wisdom}\nCHA: {self.charisma}"
+    
+    # Data used for monster manual provided by Kaggle user mrpantherson: https://www.kaggle.com/datasets/mrpantherson/dnd-5e-monsters?resource=download
