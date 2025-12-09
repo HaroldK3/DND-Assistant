@@ -27,7 +27,7 @@ from character_sheet import (
 )
 from session_tracker import SessionTracker   
 
-dotenv.load_dotenv('token.env')
+dotenv.load_dotenv()
 token = os.environ.get('discord_bot_token')
 
 ## Create tracker instance  
