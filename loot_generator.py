@@ -4,7 +4,7 @@ from typing import List, Optional
 from sqlalchemy import create_engine, Integer, String, Column, ForeignKey, DateTime, func
 from sqlalchemy.orm import sessionmaker, declarative_base, relationship
 
-# ---------- DATA MODEL ----------
+# Data Model
 
 @dataclass
 class Item:
@@ -14,7 +14,7 @@ class Item:
     type: str               # "weapon", "armor", "potion", "gear", etc.
     magic: bool = False
 
-# Open the Weapons Database 
+# Open the Weapons Database - AM
 DATABASE_URL = "sqlite:///data/Weapons.db"
 
 engine = create_engine(DATABASE_URL, echo=False, future=True)
@@ -25,7 +25,7 @@ Base = declarative_base()
 
 class WeaponModel(Base):
     __tablename__ = "Weapons_DB_Import"
-    # Weapon ORM
+    # Weapon ORM - AM
     WeaponID = Column(Integer, primary_key=True, autoincrement=True)
     Name = Column(String)
     Rarity = Column(String)
@@ -49,7 +49,7 @@ class InventoryModel(Base):
 
 Base.metadata.create_all(engine)
 
-# ---------- HELPERS TO NORMALIZE DB VALUES ----------
+# Helpers for normalizing db values - AM
 
 def _normalize_rarity(r: Optional[str]) -> str:
     if not r:
@@ -66,7 +66,7 @@ def _normalize_type(t: Optional[str]) -> str:
 
 
 def _load_items_from_db() -> List[Item]:
-    """Load all weapons from the SQLite DB into Item dataclasses."""
+    # Load all weapons from the SQLite DB into Item dataclasses. - AM
     session = SessionLocal()
     try:
         rows = session.query(WeaponModel).all()
@@ -89,7 +89,7 @@ def _load_items_from_db() -> List[Item]:
 ITEMS: List[Item] = _load_items_from_db()  
 
 
-# ---------- RARITY & ARG PARSING ----------
+# Rarity and arg parsing 
 
 RARITY_WEIGHTS = {
     "common": 60,
@@ -156,13 +156,9 @@ def _choose_rarity() -> str:
     return random.choices(rarities, weights=weights, k=1)[0]
 
 
-# ---------- RANDOM ITEM / LOOT ----------
+# Random item/loot - AM
 
-def random_item(
-    rarity: Optional[str] = None,
-    type_: Optional[str] = None,
-    magic_only: bool = False,
-) -> Optional[Item]:
+def random_item(rarity: Optional[str] = None, type_: Optional[str] = None, magic_only: bool = False) -> Optional[Item]:
   # Pick one random item, filtered by rarity/type/magic-only flags. If rarity is None or 'random' RARITY_WEIGHTS is used to get a random rarity - AM
     
     if not ITEMS:
@@ -209,12 +205,32 @@ def random_loot(chest_type: str = "chest", magic_only: bool = False) -> List[Ite
             items.append(item)
     return items
 
+def generate_loot_for_user(discord_id: str, chest_type: str = "chest", magic_only: bool = False) -> str:
+    
+    # Generate loot, save each item to the user's inventory, and return a Discord-friendly message describing the loot.
+    
+    items = random_loot(chest_type=chest_type, magic_only=magic_only)
+    if not items:
+        return "The chest is empty..."
+
+    # save all items to this user's inventory
+    for item in items:
+        save_item_to_user(discord_id, item)
+
+    # build the same style of text as build_loot_message()
+    lines = []
+    for idx, item in enumerate(items, start=1):
+        magic_text = " (magic)" if item.magic else ""
+        lines.append(f"{idx}. {item.name}{magic_text} — {item.rarity.title()} {item.type.title()}")
+
+    return "**You open the loot and find:**\n" + "\n".join(lines)
+
 # filter for possible magic flags
 def _parse_magic_flag(magic_only: str) -> bool:
     return magic_only.lower() in ("magic", "magic-only", "yes", "y", "true", "t")
 
 
-# ---------- INVENTORY HELPERS ----------
+# Inventory stuff
 
 def save_item_to_user(discord_id: str, item: Item, quantity: int = 1) -> None:
     # Create an Inventory row for this user + item. - AM
@@ -309,36 +325,3 @@ def build_inventory_message(discord_id: str) -> str:
     return "**Your inventory:**\n" + "\n".join(lines)
 
 
-
-
-def build_item_message(rarity: str = "random", item_type: str = "any", magic_only: str = "no") -> str:
-    # Return a Discord message for a single item (no saving). - AM
-    rarity_arg = None if rarity.lower() in ("random", "any", "none") else rarity
-    type_arg = None if item_type.lower() in ("any", "none") else item_type
-    magic_flag = _parse_magic_flag(magic_only)
-
-    item = random_item(rarity=rarity_arg, type_=type_arg, magic_only=magic_flag)
-    if not item:
-        return "I couldn't find an item matching those filters."
-
-    magic_text = " (magic)" if item.magic else ""
-    return (
-        f"**Item:** {item.name}{magic_text}\n"
-        f"Rarity: {item.rarity.title()} | Type: {item.type.title()}"
-    )
-
-
-def build_loot_message(chest_type: str = "chest") -> str:
-    # Return a Discord message for a loot chest. - AM
-    items = random_loot(chest_type=chest_type)
-    if not items:
-        return "The chest is empty..."
-
-    lines = []
-    for idx, item in enumerate(items, start=1):
-        magic_text = " (magic)" if item.magic else ""
-        lines.append(
-            f"{idx}. {item.name}{magic_text} — {item.rarity.title()} {item.type.title()}"
-        )
-
-    return "**You open the loot and find:**\n" + "\n".join(lines)
