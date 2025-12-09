@@ -126,7 +126,7 @@ async def item(interaction: discord.Interaction, fields: str = ""):
     embed = discord.Embed(
         title=f"{interaction.user.display_name} finds an item!",
         description=msg,
-        color=0x3498db,       # pick any color you like
+        color=0x3498db,       
     )
 
     await interaction.response.send_message(embed=embed)
@@ -150,7 +150,7 @@ async def loot(interaction: discord.Interaction, chest_type: str = "chest"):
     result = generate_loot_for_user(
         discord_id=str(interaction.user.id),
         chest_type=chest_type,
-        magic_only=False,  # set True if you ever want magic-only chests
+        magic_only=False,  # set True for magic-only chests
     )
 
     # log to session tracker - NM
