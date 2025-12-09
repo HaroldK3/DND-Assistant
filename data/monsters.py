@@ -9,7 +9,7 @@ class Monster(Base):
     index = Column(Integer, primary_key = True)
     name = Column(String)
     url = Column(String)
-    CR = Column(String)
+    CR = Column(Integer)
     category = Column(String)
     size = Column(String)
     AC = Column(Integer)
