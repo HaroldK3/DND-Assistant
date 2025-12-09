@@ -6,7 +6,14 @@ import dice_roller
 from monster_manual import find_monster, display_monsters, mm_literals
 from typing import Optional, Literal
 import dotenv
-from loot_generator import build_loot_message, parse_item_args, build_inventory_message, generate_item_for_user, clear_inventory_for_user
+from loot_generator import (
+    build_loot_message, 
+    parse_item_args, 
+    build_inventory_message, 
+    generate_item_for_user, 
+    clear_inventory_for_user, 
+    generate_loot_for_user
+)
 import json
 from character_sheet import (
     init_db,
@@ -20,7 +27,7 @@ from character_sheet import (
 )
 from session_tracker import SessionTracker   
 
-dotenv.load_dotenv()
+dotenv.load_dotenv('token.env')
 token = os.environ.get('discord_bot_token')
 
 ## Create tracker instance  
@@ -101,7 +108,7 @@ async def search_monster(ctx, name: Optional[str], category: Optional[str], size
 # Auto logging for session tracker -NM
     tracker.record_monster(ctx.guild.id, ctx.user.name, results)
 
-# item – generates an item and stores it in the user's inventory
+# item – generates an item and stores it in the user's inventory - AM
 @bot.tree.command(name="item", description="Get a random item and add it to your inventory.")
 @app_commands.describe(
     fields="e.g. 'common weapon', 'common light armor', 'rare ring magic'"
@@ -110,13 +117,8 @@ async def item(interaction: discord.Interaction, fields: str = ""):
     
     rarity, item_type, magic_only = parse_item_args(fields)
 
-    # generate & save item for this user
-    msg = generate_item_for_user(
-        discord_id=str(interaction.user.id),
-        rarity=rarity,
-        item_type=item_type,
-        magic_only=magic_only,
-    )
+    # generate & save item for user - AM
+    msg = generate_item_for_user(discord_id=str(interaction.user.id), rarity=rarity, item_type=item_type, magic_only=magic_only)
 
     await interaction.response.send_message(
         f"**{interaction.user.display_name}** finds:\n{msg}"
@@ -129,18 +131,19 @@ async def inventory(interaction: discord.Interaction):
     await interaction.response.send_message(msg)
 
 # loot – just generates a pile of loot (doesn't put into inventory atm) - AM
-@bot.tree.command(name="loot", description="Generate a pile of random loot.")
+@bot.tree.command(name="loot", description="Generate a pile of random loot and add it to your inventory.")
 @app_commands.describe(
     chest_type="pouch (small), chest (medium), or hoard (big)"
 )
 async def loot(interaction: discord.Interaction, chest_type: str = "chest"):
-    result = build_loot_message(chest_type=chest_type)
-    await interaction.response.send_message(result)
+    # generate loot AND save it to this user's inventory - AM
+    result = generate_loot_for_user(discord_id=str(interaction.user.id), chest_type=chest_type, magic_only=False)  # can change magic_only to True to make a magic item only chest
 
     # Auto logging for session tracker -NM
     tracker.record_loot(interaction.guild.id, interaction.user.name, result)
 
     await interaction.response.send_message(result)
+
 # clear_inventory - clear the users inventory - AM
 @bot.tree.command(name="clear_inventory", description="Delete all items from your inventory.")
 async def clear_inventory(interaction: discord.Interaction):
