@@ -72,7 +72,7 @@ async def roll_die(interaction: discord.Interaction, dice: str):
         char_name = interaction.user.display_name
 
     result = dice_roller.roll(dice)
-    await interaction.response.send_message(f"**{char_name}**: {result}")
+    await interaction.response.send_message(f"**{char_name}** {result}")
 
 ## Search the monster manual -SM
 @bot.tree.command(name='monster')

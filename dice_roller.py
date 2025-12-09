@@ -34,4 +34,4 @@ def roll(input):
 
     mod = f"{'+' if die_modifier >= 0 else '-'} {abs(die_modifier)}" if die_modifier != 0 else ""
 
-    return f"Rolling {num_of_die}d{sides_of_die}{mod}: {rolls} Total: {total}"
+    return f"Rolls {num_of_die}d{sides_of_die}{mod}: {rolls} Total: {total}"
