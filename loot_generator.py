@@ -325,36 +325,3 @@ def build_inventory_message(discord_id: str) -> str:
     return "**Your inventory:**\n" + "\n".join(lines)
 
 
-
-
-def build_item_message(rarity: str = "random", item_type: str = "any", magic_only: str = "no") -> str:
-    # Return a Discord message for a single item (no saving). - AM
-    rarity_arg = None if rarity.lower() in ("random", "any", "none") else rarity
-    type_arg = None if item_type.lower() in ("any", "none") else item_type
-    magic_flag = _parse_magic_flag(magic_only)
-
-    item = random_item(rarity=rarity_arg, type_=type_arg, magic_only=magic_flag)
-    if not item:
-        return "I couldn't find an item matching those filters."
-
-    magic_text = " (magic)" if item.magic else ""
-    return (
-        f"**Item:** {item.name}{magic_text}\n"
-        f"Rarity: {item.rarity.title()} | Type: {item.type.title()}"
-    )
-
-
-def build_loot_message(chest_type: str = "chest") -> str:
-    # Return a Discord message for a loot chest. - AM
-    items = random_loot(chest_type=chest_type)
-    if not items:
-        return "The chest is empty..."
-
-    lines = []
-    for idx, item in enumerate(items, start=1):
-        magic_text = " (magic)" if item.magic else ""
-        lines.append(
-            f"{idx}. {item.name}{magic_text} — {item.rarity.title()} {item.type.title()}"
-        )
-
-    return "**You open the loot and find:**\n" + "\n".join(lines)

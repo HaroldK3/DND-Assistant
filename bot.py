@@ -7,7 +7,6 @@ from monster_manual import find_monster, display_monsters, mm_literals
 from typing import Optional, Literal
 import dotenv
 from loot_generator import (
-    build_loot_message, 
     parse_item_args, 
     build_inventory_message, 
     generate_item_for_user, 
@@ -27,7 +26,7 @@ from character_sheet import (
 )
 from session_tracker import SessionTracker   
 
-dotenv.load_dotenv()
+dotenv.load_dotenv('token.env')
 token = os.environ.get('discord_bot_token')
 
 ## Create tracker instance  
@@ -108,54 +107,78 @@ async def search_monster(ctx, name: Optional[str], category: Optional[str], size
 # Auto logging for session tracker -NM
     tracker.record_monster(ctx.guild.id, ctx.user.name, results)
 
-# item – generates an item and stores it in the user's inventory - AM
 @bot.tree.command(name="item", description="Get a random item and add it to your inventory.")
-@app_commands.describe(
-    fields="e.g. 'common weapon', 'common light armor', 'rare ring magic'"
-)
+@app_commands.describe(fields="e.g. 'common weapon', 'common light armor', 'rare ring magic'")
 async def item(interaction: discord.Interaction, fields: str = ""):
-    
     rarity, item_type, magic_only = parse_item_args(fields)
 
     # generate & save item for user - AM
-    msg = generate_item_for_user(discord_id=str(interaction.user.id), rarity=rarity, item_type=item_type, magic_only=magic_only)
-
-    await interaction.response.send_message(
-        f"**{interaction.user.display_name}** finds:\n{msg}"
+    msg = generate_item_for_user(
+        discord_id=str(interaction.user.id),
+        rarity=rarity,
+        item_type=item_type,
+        magic_only=magic_only,
     )
 
+    embed = discord.Embed(
+        title=f"{interaction.user.display_name} finds an item!",
+        description=msg,
+        color=0x3498db,       # pick any color you like
+    )
+
+    await interaction.response.send_message(embed=embed)
 # inventory – shows the user's items - AM
 @bot.tree.command(name="inventory", description="Show your item inventory.")
 async def inventory(interaction: discord.Interaction):
     msg = build_inventory_message(str(interaction.user.id))
-    await interaction.response.send_message(msg)
 
-# loot – just generates a pile of loot (doesn't put into inventory atm) - AM
+    embed = discord.Embed(
+        title=f"{interaction.user.display_name}'s Inventory",
+        description=msg,
+        color=0x3498db,
+    )
+
+    await interaction.response.send_message(embed=embed)
+
 @bot.tree.command(name="loot", description="Generate a pile of random loot and add it to your inventory.")
-@app_commands.describe(
-    chest_type="pouch (small), chest (medium), or hoard (big)"
-)
+@app_commands.describe(chest_type="pouch (small), chest (medium), or hoard (big)")
 async def loot(interaction: discord.Interaction, chest_type: str = "chest"):
     # generate loot AND save it to this user's inventory - AM
-    result = generate_loot_for_user(discord_id=str(interaction.user.id), chest_type=chest_type, magic_only=False)  # can change magic_only to True to make a magic item only chest
+    result = generate_loot_for_user(
+        discord_id=str(interaction.user.id),
+        chest_type=chest_type,
+        magic_only=False,  # set True if you ever want magic-only chests
+    )
 
-    # Auto logging for session tracker -NM
+    # log to session tracker - NM
     tracker.record_loot(interaction.guild.id, interaction.user.name, result)
 
-    await interaction.response.send_message(result)
+    embed = discord.Embed(
+        title=f"{interaction.user.display_name} opens a {chest_type}!",
+        description=result,
+        color=0x3498db,
+    )
 
-# clear_inventory - clear the users inventory - AM
+    await interaction.response.send_message(embed=embed)
+
 @bot.tree.command(name="clear_inventory", description="Delete all items from your inventory.")
 async def clear_inventory(interaction: discord.Interaction):
-    
     deleted = clear_inventory_for_user(str(interaction.user.id))
 
     if deleted == 0:
-        msg = "You don't have any items in your inventory."
+        text = "You don't have any items in your inventory."
+        color = discord.Color.red()
     else:
-        msg = f"Removed {deleted} item(s) from your inventory."
+        text = f"Removed {deleted} item(s) from your inventory."
+        color = discord.Color.orange()
 
-    await interaction.response.send_message(msg, ephemeral=True)
+    embed = discord.Embed(
+        title="Inventory Cleared",
+        description=text,
+        color=color,
+    )
+
+    await interaction.response.send_message(embed=embed, ephemeral=True)
 
 ## Character Sheet stuff -KH
 def format_character(row):
