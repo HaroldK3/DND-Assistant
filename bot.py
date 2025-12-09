@@ -82,24 +82,27 @@ async def roll_die(interaction: discord.Interaction, dice: str):
     category="Search by monster type.",
     size="Search by monsters size.",
     minac="Please enter an integer for minimum armor class.",
+    maxac="Please enter an integer for maximum armor class.",
     minhp="Please enter an integer for minimum health.",
+    maxhp="Please enter an integer for maximum health.",
     speed="Please select a speed type.",
     align="Please select an alignment.",
     legendary="Is the monster Legendary?",
-    amount="How many monsters meeting criteria to return?"
+    reveal="Let everyone see results?"
 )
 # All parameters are optional, so a user may use one, two, three, or all elements for their search if they'd like, allowing for more broad searches as well as more narrow searches. Also has amount variable to allow for getting a certain amount of monsters.--SM
-async def search_monster(ctx, name: Optional[str], category: Optional[str], size: Optional[mm_literals.sizes], minac: Optional[int], minhp: Optional[int], speed: Optional[mm_literals.speeds], align: Optional[mm_literals.alignments], legendary: Optional[Literal["Yes", "No"]], amount: Optional[int]):
+async def search_monster(ctx, name: Optional[str], category: Optional[str], size: Optional[mm_literals.sizes], minac: Optional[int], maxac: Optional[int], minhp: Optional[int], maxhp: Optional[int], speed: Optional[mm_literals.speeds], align: Optional[mm_literals.alignments], legendary: Optional[Literal["Yes", "No"]], reveal: Optional[Literal["Yes","No"]]):
     # Creates a list from the find monsters method with the search terms used, if any were input.--SM
-    results = await find_monster(name, category, size, minac, minhp, speed, align, legendary, amount)
+    
+    results = await find_monster(name, category, size, minac, maxac, minhp, maxhp, speed, align, legendary)
+   
     if not results:
-        await ctx.response.send_message("Could not find any monsters using provided terms. Please try again.")
+        embed = discord.Embed(
+            title="Could not find monsters meeting your search.", description="Please check to ensure your search values are valid, or try a different search."
+        )
+        await ctx.response.send_message(embed=embed, ephemeral=True)
     else:
-        await display_monsters(ctx, results)        
-
-
-# Auto logging for session tracker -NM
-    tracker.record_monster(ctx.guild.id, ctx.user.name, results)
+        await display_monsters(ctx, results, tracker, reveal)     
 
 # item – generates an item and stores it in the user's inventory
 @bot.tree.command(name="item", description="Get a random item and add it to your inventory.")
