@@ -26,7 +26,7 @@ from character_sheet import (
 )
 from session_tracker import SessionTracker   
 
-dotenv.load_dotenv('token.env')
+dotenv.load_dotenv('.env')
 token = os.environ.get('discord_bot_token')
 
 ## Create tracker instance  
@@ -72,7 +72,7 @@ async def roll_die(interaction: discord.Interaction, dice: str):
         char_name = interaction.user.display_name
 
     result = dice_roller.roll(dice)
-    await interaction.response.send_message(f"**{char_name}** rolls: {result}")
+    await interaction.response.send_message(f"**{char_name}**: {result}")
 
 ## Search the monster manual -SM
 @bot.tree.command(name='monster')
